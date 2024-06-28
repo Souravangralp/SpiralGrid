@@ -1,0 +1,215 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spiral Grid</title>
+    <!-- Include Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <style>
+        /* Styles for the square grid table */
+        .square-grid {
+            border-collapse: collapse; /* Collapse table borders */
+            margin-top: 20px; /* Add margin on top */
+        }
+
+            .square-grid td {
+                text-align: center; /* Center align text within table cells */
+                border: 1px solid #ccc; /* Border style for table cells */
+                padding: 10px; /* Padding inside table cells */
+                font-size: 18px; /* Font size of text */
+                font-weight: bold; /* Bold font weight */
+            }
+
+        /* Styles for individual grid cells */
+        .grid-cell {
+            width: calc(100% / 100); /* Adjust width based on the number of columns (100 in this case) */
+            padding: 0; /* Remove padding to ensure cells fit tightly */
+        }
+
+        /* Styles for the origin cell */
+        .origin {
+            background-color: #ffcc00 !important; /* Example background color for the origin cell */
+        }
+
+        /* Styles for intersected cells */
+        .intersected {
+            background-color: #ff6666; /* Example background color for intersected cells */
+        }
+
+        /* General body styles */
+        body {
+            background-color: #f0f0f0; /* Background color for the body */
+            font-family: Arial, sans-serif; /* Font family for text */
+            padding: 20px; /* Padding around the body content */
+        }
+
+        /* Styles for the form container */
+        .form-container {
+            background-color: #fff; /* Background color for the form container */
+            padding: 20px; /* Padding inside the form container */
+            border-radius: 8px; /* Rounded corners for the form container */
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Shadow effect for the form container */
+        }
+
+        /* Styles for the button container */
+        .button-container {
+            margin-top: 20px; /* Margin on top of the button container */
+            text-align: center; /* Center align text inside the button container */
+        }
+
+        /* Button styles */
+        button {
+            padding: 12px 24px; /* Padding inside buttons */
+            font-size: 16px; /* Font size of button text */
+            background-color: #007bff; /* Default background color of buttons */
+            color: #fff; /* Text color of buttons */
+            border: none; /* No border around buttons */
+            border-radius: 4px; /* Rounded corners for buttons */
+            cursor: pointer; /* Pointer cursor on hover */
+            transition: background-color 0.3s ease-in-out; /* Smooth transition for background color */
+        }
+
+            button:hover {
+                background-color: #0056b3; /* Darker background color on hover */
+            }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h2>Spiral Grid</h2>
+            <form method="post" asp-controller="Home" asp-action="Index">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label for="size">Grid Size:</label>
+                        <!-- Input field for grid size -->
+                        <input type="number" id="size" name="size" value="@(Model?.Grid?.GetLength(0) ?? 0)" min="1" max="1000" class="form-control">
+                    </div>
+                    <div class="col-md-9" style="display: flex">
+                        <div id="targetInputs">
+                            <!-- Loop through each target number input -->
+                            @for (int i = 0; i < Model?.Targets.Count; i++)
+                            {
+                                <div class="form-group">
+                                    <!-- Label and input field for each target number -->
+                                    <label for="targets[@i]">Target Number @(i + 1)</label>
+                                    <input type="number" id="targets[@i]" name="targets[@i]" value="@Model.Targets[i]" min="1" class="form-control">
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="button-container">
+                    <!-- Buttons for adding a target, removing all targets, and generating the grid -->
+                    <button type="button" onclick="addTarget()" class="btn btn-primary">Add Target</button>
+                    <button type="button" onclick="removeAllTargets()" class="btn btn-danger">Remove All</button>
+                    <button type="submit" class="btn btn-success">Generate Grid</button>
+                </div>
+            </form>
+            <br>
+            <!-- Display the spiral grid in a scrollable table -->
+            <div style="overflow-x:auto; overflow-y: auto; max-height: 80vh">
+                <table class="square-grid">
+                    <!-- Loop through each row of the grid -->
+                    @for (int i = 0; i < Model.Grid.GetLength(0); i++)
+                    {
+                        <tr>
+                            <!-- Loop through each column of the grid -->
+                            @for (int j = 0; j < Model.Grid.GetLength(1); j++)
+                            {
+                                var number = Model.Grid[i, j];
+                                bool isIntersected = false;
+                                // Check if the current number is in the list of intersected numbers
+                                foreach (var intersected in Model.IntersectedNumbers)
+                                {
+                                    if (intersected.Contains(number))
+                                    {
+                                        isIntersected = true;
+                                        break;
+                                    }
+                                }
+                                <!-- Display each grid cell with appropriate classes -->
+                                <td class="grid-cell @(number == 1 ? "origin" : "") @(isIntersected ? "intersected" : "")">@number</td>
+                            }
+                        </tr>
+                    }
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and jQuery (if needed) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        // Function to validate target inputs
+        function validateTargetInputs() {
+            var size = parseInt(document.getElementById('size').value); // Get the grid size
+            var targetInputs = document.querySelectorAll('#targetInputs input[type="number"]');
+
+            targetInputs.forEach(function (input) {
+                input.addEventListener('change', function () {
+                    var value = parseInt(this.value);
+                    if (value > size * size) {
+                        alert('Target number should not exceed ' + (size * size));
+                        this.value = ''; // Clear the input if the value is invalid
+                    }
+                });
+            });
+        }
+
+        // Call the validation function on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            validateTargetInputs();
+        });
+
+        // Function to add a new target input dynamically
+        function addTarget() {
+            var targetInputsDiv = document.getElementById('targetInputs');
+            var nextIndex = targetInputsDiv.querySelectorAll('.form-group').length; // Calculate next index based on current count
+
+            var label = document.createElement('label');
+            label.setAttribute('for', 'targets[' + nextIndex + ']');
+            label.textContent = 'Target Number ' + (nextIndex + 1) + ':';
+            label.appendChild(document.createElement('br'));
+
+            var divFormGroup = document.createElement('div');
+            divFormGroup.classList.add('form-group');
+
+            divFormGroup.appendChild(label);
+
+            var input = document.createElement('input');
+            input.setAttribute('type', 'number');
+            input.setAttribute('id', 'targets[' + nextIndex + ']');
+            input.setAttribute('name', 'targets[' + nextIndex + ']');
+            input.setAttribute('value', ''); // Empty value for new input
+            input.setAttribute('min', '1');
+            input.classList.add('form-control');
+
+            // Attach event listener for validation
+            input.addEventListener('change', function () {
+                var size = parseInt(document.getElementById('size').value);
+                var value = parseInt(this.value);
+                if (value > size * size) {
+                    alert('Target number should not exceed ' + (size * size));
+                    this.value = ''; // Clear the input if the value is invalid
+                }
+            });
+
+            divFormGroup.appendChild(input);
+
+            targetInputsDiv.appendChild(divFormGroup);
+        }
+
+        // Function to remove all target inputs
+        function removeAllTargets() {
+            var targetInputsDiv = document.getElementById('targetInputs');
+            targetInputsDiv.innerHTML = ''; // Clear the inner HTML of the targetInputs div
+        }
+    </script>
+</body>
+</html>
